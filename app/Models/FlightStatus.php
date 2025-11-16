@@ -17,6 +17,7 @@ class FlightStatus extends Model
         'status_code',
         'status_name',
         'description',
+        'id_status_code'
     ];
 
     // Timestamps

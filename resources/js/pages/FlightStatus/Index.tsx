@@ -4,7 +4,7 @@ import { DataGridTable } from '@/components/ui/data-grid-table';
 import { ScrollArea, Scrollbar } from '@radix-ui/react-scroll-area';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 
 import {
     ColumnDef,
@@ -20,6 +20,7 @@ import { useMemo, useState } from 'react';
 // --- Interface for Flight Status ---
 interface IFlightStatus {
     id: string;
+    id_status_code: string; // Added field
     status_code: string;
     status_name: string;
     description: string;
@@ -35,7 +36,7 @@ export default function FlightStatusIndex({ flightStatuses }: FlightStatusIndexP
     // --- Pagination state ---
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
-        pageSize: 5,
+        pageSize: 10,
     });
 
     // --- Columns definition ---
@@ -43,29 +44,13 @@ export default function FlightStatusIndex({ flightStatuses }: FlightStatusIndexP
         {
             id: 'index',
             header: '#',
-            cell: ({ row }) => row.index + 1, // Display row number
+            cell: ({ row }) => row.index + 1,
             size: 50,
         },
+        { accessorKey: 'id_status_code', header: 'ID Status Code', size: 100 },
         { accessorKey: 'status_code', header: 'Status Code', size: 120 },
         { accessorKey: 'status_name', header: 'Status Name', size: 150 },
         { accessorKey: 'description', header: 'Description', size: 300 },
-        {
-            id: 'actions',
-            header: 'Actions',
-            cell: ({ row }) => (
-                <button
-                    onClick={() =>
-                        router.post('/notams/generate', {
-                            flight_status_id: row.original.id,
-                        })
-                    }
-                    className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-                >
-                    Generate NOTAM
-                </button>
-            ),
-            size: 160,
-        },
     ], []);
 
     // --- Table instance ---

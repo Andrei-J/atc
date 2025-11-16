@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use App\Services\NotamGenerator;
-
+use Illuminate\Support\Facades\Log;
 class NotamController extends Controller
 {
     // Show all NOTAMs
@@ -16,6 +16,52 @@ class NotamController extends Controller
         return Inertia::render('Notams/Index', [
             'notams' => Notam::with('airport')->latest()->get(),
         ]);
+    }
+
+   public function edit(Request $request)
+    {
+        // Retrieve NOTAM ID from query params 
+        $notamId = $request->query('id');
+        
+        if (!$notamId) {
+            // Handle case where ID is missing (e.g., redirect or show error)
+            return redirect()->route('notams.index')->with('error', 'NOTAM ID is required for editing.');
+        }
+        // Find NOTAM or fail
+        $notam = Notam::findOrFail($notamId);
+        // Return Inertia render for edit page, passing NOTAM data
+        return Inertia::render('Notams/Edit', [
+            'notam' => $notam,  // Pass NOTAM to frontend for editing
+        ]);
+    }
+
+    public function update(Request $request, Notam $notam)
+    {
+        // Validate the request
+        $request->validate([
+            'message' => 'required|string|max:1000',  // Adjust validation as needed
+        ]);
+        // Update the NOTAM
+        $notam->update([
+            'message' => $request->message,
+        ]);
+        // Trigger the n8n webhook after successful update
+        try {
+            Http::post('https://n8n.larable.dev/webhook/78988c9e-532f-43ea-82f0-cca56a6f5a69', [
+                'notam_id' => $notam->id,
+                'airport_id' => $notam->airport_id,
+                'city' => $notam->city,
+                'message' => $notam->message,
+                'updated_at' => now()->toISOString(),
+                'query' =>'update',
+                
+            ]);
+        } catch (\Exception $e) {
+            // Log the error but don't fail the update
+            Log::error('Failed to trigger n8n webhook for NOTAM update: ' . $e->getMessage());
+        }
+        // Redirect back to the NOTAMs index with success message
+        return redirect()->route('notams.index')->with('success', 'NOTAM updated successfully.');
     }
 
     /**
@@ -69,7 +115,7 @@ class NotamController extends Controller
                 $advice = "Safe to take flight. Weather conditions are stable.";
             }
 
-            // FIX: Generate Base NOTAM Format, now passing all 4 required arguments
+            // Generate Base NOTAM Format
             $notamContent = NotamGenerator::generate(
                 $airport['city'],
                 $airport['iata_code'],
@@ -95,22 +141,21 @@ class NotamController extends Controller
                 continue;
             }
 
-            // Save NOTAM
-            Notam::create([
+            // Save NOTAM in ATC database
+            $notam = Notam::create([
                 'airport_id' => $airport['iata_code'],
                 'city'       => $airport['city'],
                 'message'    => $message,
             ]);
 
-            $generated++;
-
-            // ... after saving the NOTAM:
-            $newNotam = Notam::create([
-                'airport_id' => $airport['iata_code'],
-                // ... other fields
+            //Send NOTAM to n8n so it can insert into IAOS database
+            Http::post('https://n8n.larable.dev/webhook/7789106c-df1f-4ead-b8b8-16332151bd99', [
+                'airport_id' => $notam->airport_id,
+                'city'       => $notam->city,
+                'message'    => $notam->message,
             ]);
-            // RELIABLE SYNC: Send the data to N8N webhook
-            Http::post('https://n8n.larable.dev/webhook-test/7789106c-df1f-4ead-b8b8-16332151bd99', $newNotam->toArray()); // <-- This triggers the sync
+
+            $generated++;
         }
 
         return response()->json([

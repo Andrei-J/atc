@@ -15,27 +15,29 @@ import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
 import AppLogo from './app-logo';
-
+import { PlaneFillIcon } from "@/components/shadcn-icons/akar-icons-plane-fill";
+import { FolderIcon } from "@/components/shadcn-icons/akar-icons-folder";
+import { LayoutDashboard,CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 const mainNavItems: NavItem[] = [
     {
         title: 'Flights Status',
         href: '/FlightStatus/Index',
-        icon: LayoutGrid,
+        icon: PlaneFillIcon as any,
     },
     {
         title: 'Airport Status',
         href: '/AirportStatus/Index',
-        icon: LayoutGrid,
+        icon: CheckCircle,
     },
     {
         title: 'Notams',
         href: '/notams/',
-        icon: LayoutGrid,
+        icon: FolderIcon as any,
     },
     {
         title: 'Dashboard',
         href: dashboard(),
-        icon: LayoutGrid,
+        icon: LayoutDashboard,
     }
     
 ];
